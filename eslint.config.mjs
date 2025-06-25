@@ -11,6 +11,20 @@ export default [
   // Prettier設定を適用（他のルールとの競合を無効化）
   prettierConfig,
 
+  // 無視するファイル
+  {
+    ignores: [
+      'dist/**',
+      'build/**',
+      '**/*.js',
+      '**/*.d.ts',
+      'node_modules/**',
+      'cdk.out/**',
+      'coverage/**',
+      '*.generated.ts',
+    ],
+  },
+
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -31,6 +45,13 @@ export default [
         JSON: 'readonly',
         Date: 'readonly',
         Math: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        jest: 'readonly',
       },
     },
     plugins: {
@@ -66,17 +87,5 @@ export default [
       'object-shorthand': 'warn',
       'arrow-body-style': ['warn', 'as-needed'],
     },
-  },
-  {
-    ignores: [
-      'dist/**',
-      'build/**',
-      '*.js',
-      '*.d.ts',
-      'node_modules/**',
-      'cdk.out/**',
-      'coverage/**',
-      '*.generated.ts',
-    ],
   },
 ];

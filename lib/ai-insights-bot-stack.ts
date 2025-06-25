@@ -173,6 +173,28 @@ export class AiInsightsBotStack extends cdk.Stack {
 
     weekendSchedule.addTarget(new targets.LambdaFunction(collectAINewsFunction));
 
+    // 週次サマリー実行 (毎週日曜日 JST 19:00 = UTC 10:00)
+    const weeklySummarySchedule = new events.Rule(this, 'WeeklySummaryScheduleRule', {
+      ruleName: 'ai-insights-bot-weekly-summary',
+      description: 'AI情報週次サマリー - 日曜日夜7時',
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '10', // UTC 10:00 = JST 19:00
+        weekDay: 'SUN',
+      }),
+      enabled: true,
+    });
+
+    weeklySummarySchedule.addTarget(
+      new targets.LambdaFunction(processAndPostFunction, {
+        event: events.RuleTargetInput.fromObject({
+          source: 'eventbridge',
+          type: 'weekly-summary',
+          timestamp: new Date().toISOString(),
+        }),
+      })
+    );
+
     // =============================================================================
     // API Gateway: 手動実行エンドポイント
     // =============================================================================
@@ -211,6 +233,26 @@ export class AiInsightsBotStack extends cdk.Stack {
     // エンドポイント設定
     const collectResource = api.root.addResource('collect');
     collectResource.addMethod('POST', collectIntegration, {
+      methodResponses: [
+        {
+          statusCode: '200',
+        },
+      ],
+    });
+
+    // 週次サマリーエンドポイント
+    const summaryIntegration = new apigateway.LambdaIntegration(processAndPostFunction, {
+      requestTemplates: {
+        'application/json': JSON.stringify({
+          source: 'api-gateway',
+          type: 'manual-summary',
+          body: '$input.body',
+        }),
+      },
+    });
+
+    const summaryResource = api.root.addResource('summary');
+    summaryResource.addMethod('POST', summaryIntegration, {
       methodResponses: [
         {
           statusCode: '200',

@@ -2,17 +2,12 @@
 // lambda/collect-ai-news/index.ts - メインのAI情報収集Lambda関数
 // =============================================================================
 
-import {
-  APIGatewayProxyHandler,
-  EventBridgeEvent,
-  Context,
-  APIGatewayProxyResult,
-} from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { SSMClient, GetParametersCommand } from '@aws-sdk/client-ssm';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { TwitterApi } from 'twitter-api-v2';
-import { WebClient } from '@slack/web-api';
+import { WebClient, Block, KnownBlock } from '@slack/web-api';
 import axios from 'axios';
 import Parser from 'rss-parser';
 
@@ -33,19 +28,13 @@ interface AIContent {
     retweets?: number;
     stars?: number;
   };
-  source_info?: any;
+  source_info?: unknown;
 }
 
 interface Config {
   slackBotToken: string;
   twitterBearerToken: string;
   slackChannel: string;
-}
-
-interface LambdaEvent {
-  source?: string;
-  schedule?: string;
-  manual?: boolean;
 }
 
 // =============================================================================
@@ -73,12 +62,12 @@ async function getConfiguration(): Promise<Config> {
   });
 
   const response = await ssmClient.send(command);
-  const params = response.Parameters || [];
+  const params = response.Parameters ?? [];
 
   const config: Config = {
-    slackBotToken: params.find((p) => p.Name?.includes('slack-bot-token'))?.Value || '',
-    twitterBearerToken: params.find((p) => p.Name?.includes('twitter-bearer-token'))?.Value || '',
-    slackChannel: params.find((p) => p.Name?.includes('slack-channel'))?.Value || '#ai-news',
+    slackBotToken: params.find((p) => p.Name?.includes('slack-bot-token'))?.Value ?? '',
+    twitterBearerToken: params.find((p) => p.Name?.includes('twitter-bearer-token'))?.Value ?? '',
+    slackChannel: params.find((p) => p.Name?.includes('slack-channel'))?.Value ?? '#ai-news',
   };
 
   if (!config.slackBotToken || !config.twitterBearerToken) {
@@ -144,10 +133,10 @@ class TwitterClient {
                 content: tweet.text,
                 url: `https://twitter.com/${username}/status/${tweet.id}`,
                 author: username,
-                timestamp: new Date(tweet.created_at || Date.now()).getTime(),
+                timestamp: new Date(tweet.created_at ?? Date.now()).getTime(),
                 metrics: {
-                  likes: tweet.public_metrics?.like_count || 0,
-                  retweets: tweet.public_metrics?.retweet_count || 0,
+                  likes: tweet.public_metrics?.like_count ?? 0,
+                  retweets: tweet.public_metrics?.retweet_count ?? 0,
                 },
               });
             }
@@ -172,14 +161,23 @@ class TwitterClient {
           });
 
           const users = searchResults.includes?.users || [];
-          const userMap = users.reduce((map, user) => {
-            map[user.id] = user;
-            return map;
-          }, {} as any);
+          interface TwitterUser {
+            id: string;
+            username: string;
+            verified?: boolean;
+          }
+
+          const userMap = users.reduce(
+            (map, user) => {
+              map[user.id] = user;
+              return map;
+            },
+            {} as Record<string, TwitterUser>
+          );
 
           for (const tweet of searchResults.data.data || []) {
             const author = tweet.author_id ? userMap[tweet.author_id] : undefined;
-            if (author && (author.verified || (tweet.public_metrics?.like_count || 0) > 20)) {
+            if (author && (author.verified || (tweet.public_metrics?.like_count ?? 0) > 20)) {
               tweets.push({
                 id: `twitter_search_${tweet.id}`,
                 type: 'twitter',
@@ -187,10 +185,10 @@ class TwitterClient {
                 content: tweet.text,
                 url: `https://twitter.com/${author.username}/status/${tweet.id}`,
                 author: author.username,
-                timestamp: new Date(tweet.created_at || Date.now()).getTime(),
+                timestamp: new Date(tweet.created_at ?? Date.now()).getTime(),
                 metrics: {
-                  likes: tweet.public_metrics?.like_count || 0,
-                  retweets: tweet.public_metrics?.retweet_count || 0,
+                  likes: tweet.public_metrics?.like_count ?? 0,
+                  retweets: tweet.public_metrics?.retweet_count ?? 0,
                 },
               });
             }
@@ -265,16 +263,16 @@ class RSSClient {
       try {
         const feed = await rssParser.parseURL(feedUrl);
 
-        for (const item of (feed.items || []).slice(0, 3)) {
+        for (const item of (feed.items ?? []).slice(0, 3)) {
           if (item.link && item.title) {
             articles.push({
               id: `rss_${Buffer.from(item.link).toString('base64').substring(0, 10)}`,
               type: 'rss',
               title: item.title,
-              content: item.contentSnippet || item.content || '',
+              content: item.contentSnippet ?? item.content ?? '',
               url: item.link,
-              author: feed.title || 'Unknown',
-              timestamp: new Date(item.pubDate || Date.now()).getTime(),
+              author: feed.title ?? 'Unknown',
+              timestamp: new Date(item.pubDate ?? Date.now()).getTime(),
             });
           }
         }
@@ -293,15 +291,33 @@ class RSSClient {
 
 async function getGitHubTrending(): Promise<AIContent[]> {
   try {
-    const response = await axios.get(
+    interface GitHubRepo {
+      id: number;
+      name: string;
+      description: string | null;
+      html_url: string;
+      owner: {
+        login: string;
+      };
+      updated_at: string;
+      stargazers_count: number;
+      language: string | null;
+      forks_count: number;
+    }
+
+    interface GitHubSearchResponse {
+      items: GitHubRepo[];
+    }
+
+    const response = await axios.get<GitHubSearchResponse>(
       'https://api.github.com/search/repositories?q=topic:artificial-intelligence&sort=stars&order=desc&per_page=5'
     );
 
-    return response.data.items.map((repo: any) => ({
+    return response.data.items.map((repo) => ({
       id: `github_${repo.id}`,
       type: 'github' as const,
       title: repo.name,
-      content: repo.description || '',
+      content: repo.description ?? '',
       url: repo.html_url,
       author: repo.owner.login,
       timestamp: new Date(repo.updated_at).getTime(),
@@ -355,7 +371,7 @@ class DeduplicationService {
       });
 
       const result = await dynamoClient.send(command);
-      return (result.Items?.length || 0) > 0;
+      return (result.Items?.length ?? 0) > 0;
     } catch (error) {
       console.error('重複チェックエラー:', error);
       return false; // エラー時は投稿を許可
@@ -376,7 +392,7 @@ class DeduplicationService {
             source_type: item.type,
             title: item.title,
             url: item.url,
-            ttl: ttl,
+            ttl,
           },
         });
 
@@ -404,8 +420,8 @@ class SlackClient {
 
     try {
       await this.client.chat.postMessage({
-        channel: channel,
-        blocks: blocks,
+        channel,
+        blocks,
         text: `🤖 AI情報まとめ - ${content.length}件の新着情報`,
       });
 
@@ -416,7 +432,7 @@ class SlackClient {
     }
   }
 
-  private formatMessage(content: AIContent[]): any[] {
+  private formatMessage(content: AIContent[]): (Block | KnownBlock)[] {
     const blocks = [
       {
         type: 'header',
@@ -458,13 +474,13 @@ class SlackClient {
           ? `❤️ ${item.metrics.likes} | 🔄 ${item.metrics.retweets}`
           : '';
         const truncatedContent =
-          item.content.length > 140 ? item.content.substring(0, 140) + '...' : item.content;
+          item.content.length > 140 ? `${item.content.substring(0, 140)}...` : item.content;
 
         blocks.push({
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*${item.title}*\n${truncatedContent}\n<${item.url}|ツイートを見る> ${metrics ? '| ' + metrics : ''}`,
+            text: `*${item.title}*\n${truncatedContent}\n<${item.url}|ツイートを見る> ${metrics ? `| ${metrics}` : ''}`,
           },
         });
       });
@@ -506,8 +522,8 @@ class SlackClient {
       });
 
       githubContent.forEach((item) => {
-        const language = item.source_info?.language || 'Unknown';
-        const stars = item.metrics?.stars || 0;
+        const language = (item.source_info as { language?: string })?.language ?? 'Unknown';
+        const stars = item.metrics?.stars ?? 0;
 
         blocks.push({
           type: 'section',
@@ -528,8 +544,8 @@ class SlackClient {
 // =============================================================================
 
 export const handler: APIGatewayProxyHandler = async (
-  event: any,
-  context: Context
+  event,
+  context
 ): Promise<APIGatewayProxyResult> => {
   const startTime = Date.now();
 
@@ -538,7 +554,7 @@ export const handler: APIGatewayProxyHandler = async (
       level: 'INFO',
       message: 'AI情報収集開始',
       requestId: context.awsRequestId,
-      event: event.source || 'api-gateway',
+      event: 'api-gateway',
     })
   );
 
@@ -569,7 +585,11 @@ export const handler: APIGatewayProxyHandler = async (
     );
 
     // 重複チェック
-    const deduplicationService = new DeduplicationService(process.env.POST_HISTORY_TABLE!);
+    const tableName = process.env.POST_HISTORY_TABLE;
+    if (!tableName) {
+      throw new Error('POST_HISTORY_TABLE environment variable is not set');
+    }
+    const deduplicationService = new DeduplicationService(tableName);
     const newContent = await deduplicationService.filterNewContent(allContent);
 
     if (newContent.length > 0) {
