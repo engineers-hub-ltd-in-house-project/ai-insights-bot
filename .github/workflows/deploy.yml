@@ -49,9 +49,19 @@ jobs:
           # または
           # - AWS_ACCESS_KEY_ID と AWS_SECRET_ACCESS_KEY
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
+        continue-on-error: true
+        id: aws-creds
+
+      - name: Check AWS credentials
+        if: steps.aws-creds.outcome == 'failure'
+        run: |
+          echo "::error::AWS認証情報が設定されていません。README の「デプロイ方法」セクションを参照してください。"
+          echo "::error::GitHub Secrets に AWS_ACCESS_KEY_ID と AWS_SECRET_ACCESS_KEY を設定するか、"
+          echo "::error::OIDC を使用する場合は AWS_ROLE_TO_ASSUME を設定してください。"
+          exit 1
 
       - name: Run tests before deploy
         run: npm test
