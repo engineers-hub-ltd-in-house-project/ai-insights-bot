@@ -1,0 +1,68 @@
+{
+  "default": true,
+  "line-length": {
+    "line_length": 120,
+    "code_blocks": false,
+    "tables": false,
+    "headings": false
+  },
+  "no-trailing-punctuation": {
+    "punctuation": ".,;:!"
+  },
+  "no-inline-html": {
+    "allowed_elements": ["details", "summary", "img", "br", "code", "pre"]
+  },
+  "no-duplicate-heading": {
+    "siblings_only": true
+  },
+  "no-emphasis-as-heading": false,
+  "first-line-heading": false,
+  "no-bare-urls": false,
+  "code-block-style": {
+    "style": "fenced"
+  },
+  "code-fence-style": {
+    "style": "backtick"
+  },
+  "emphasis-style": {
+    "style": "asterisk"
+  },
+  "strong-style": {
+    "style": "asterisk"
+  },
+  "unordered-list-style": {
+    "style": "dash"
+  },
+  "ordered-list-item-prefix": {
+    "style": "ordered"
+  },
+  "hr-style": {
+    "style": "---"
+  },
+  "heading-style": {
+    "style": "atx"
+  },
+  "heading-increment": true,
+  "no-missing-space-atx": true,
+  "no-multiple-space-atx": true,
+  "blanks-around-headings": true,
+  "heading-start-left": true,
+  "no-duplicate-heading": true,
+  "single-h1": true,
+  "no-trailing-spaces": true,
+  "no-hard-tabs": true,
+  "no-reversed-links": true,
+  "no-multiple-blanks": {
+    "maximum": 2
+  },
+  "no-missing-space-closed-atx": true,
+  "no-blank-blockquote": true,
+  "no-empty-links": true,
+  "proper-names": {
+    "names": ["JavaScript", "TypeScript", "GitHub", "AWS", "API", "CDK", "DynamoDB", "Lambda"],
+    "code_blocks": false
+  },
+  "fenced-code-language": true,
+  "reference-links-images": false,
+  "link-fragments": false
+}

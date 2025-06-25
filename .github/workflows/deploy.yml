@@ -1,0 +1,98 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    # 手動デプロイ承認が必要な場合はコメントアウトを外す
+    # environment: production
+
+    permissions:
+      id-token: write # OIDC用
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # GitHub Secretsに以下を設定:
+          # - AWS_ROLE_TO_ASSUME: OIDC用のIAMロールARN
+          # または
+          # - AWS_ACCESS_KEY_ID と AWS_SECRET_ACCESS_KEY
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Run tests before deploy
+        run: npm test
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: CDK Bootstrap (if needed)
+        run: |
+          if ! aws cloudformation describe-stacks --stack-name CDKToolkit > /dev/null 2>&1; then
+            echo "CDK Bootstrap required"
+            cdk bootstrap
+          else
+            echo "CDK Bootstrap already done"
+          fi
+
+      - name: CDK Diff
+        run: cdk diff
+
+      - name: CDK Deploy
+        run: cdk deploy --all --require-approval never
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'production' }}
+
+      - name: Get Stack Outputs
+        id: stack-outputs
+        run: |
+          API_ENDPOINT=$(aws cloudformation describe-stacks \
+            --stack-name AiInsightsBotStack \
+            --query 'Stacks[0].Outputs[?OutputKey==`APIEndpoint`].OutputValue' \
+            --output text)
+          echo "api_endpoint=$API_ENDPOINT" >> $GITHUB_OUTPUT
+
+      - name: Post deployment summary
+        run: |
+          echo "## 🚀 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Stack Outputs:" >> $GITHUB_STEP_SUMMARY
+          echo "- API Endpoint: ${{ steps.stack-outputs.outputs.api_endpoint }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Set up Systems Manager parameters" >> $GITHUB_STEP_SUMMARY
+          echo "2. Test the API endpoint" >> $GITHUB_STEP_SUMMARY
+          echo "3. Monitor CloudWatch logs" >> $GITHUB_STEP_SUMMARY

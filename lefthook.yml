@@ -20,11 +20,35 @@ pre-commit:
       run: npx eslint {staged_files}
       tags: lint javascript typescript
 
-    # Prettier
-    prettier:
-      glob: '*.{ts,tsx,json,md,yml,yaml}'
+    # Prettier - JavaScript/TypeScript/JSON
+    prettier-code:
+      glob: '*.{ts,tsx,js,jsx,json}'
       run: npx prettier --check {staged_files}
-      tags: format
+      tags: format code
+
+    # Prettier - Markdown
+    prettier-markdown:
+      glob: '*.{md,mdx}'
+      run: npx prettier --check {staged_files}
+      tags: format markdown docs
+
+    # Prettier - YAML
+    prettier-yaml:
+      glob: '*.{yml,yaml}'
+      run: npx prettier --check {staged_files}
+      tags: format yaml config
+
+    # Markdownlint
+    markdownlint:
+      glob: '*.{md,mdx}'
+      run: npx markdownlint {staged_files} --config .markdownlint.json
+      tags: lint markdown docs
+
+    # YAML lint
+    yamllint:
+      glob: '*.{yml,yaml}'
+      run: npx yaml-lint {staged_files}
+      tags: lint yaml config
 
 pre-push:
   parallel: true
@@ -72,10 +96,25 @@ fix:
       glob: '**/*.{ts,tsx}'
       run: npx eslint --fix {all_files}
 
-    # Prettier自動フォーマット
-    prettier-fix:
-      glob: '**/*.{ts,tsx,json,md,yml,yaml}'
+    # Prettier自動フォーマット - コード
+    prettier-fix-code:
+      glob: '**/*.{ts,tsx,js,jsx,json}'
       run: npx prettier --write {all_files}
+
+    # Prettier自動フォーマット - Markdown
+    prettier-fix-markdown:
+      glob: '**/*.{md,mdx}'
+      run: npx prettier --write {all_files}
+
+    # Prettier自動フォーマット - YAML
+    prettier-fix-yaml:
+      glob: '**/*.{yml,yaml}'
+      run: npx prettier --write {all_files}
+
+    # Markdownlint自動修正
+    markdownlint-fix:
+      glob: '**/*.{md,mdx}'
+      run: npx markdownlint --fix {all_files} --config .markdownlint.json
 
 # スキップ設定
 skip:

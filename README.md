@@ -69,7 +69,7 @@ cdk deploy
 
 ## 📂 プロジェクト構造
 
-```
+```text
 ai-insights-bot/
 ├── lib/
 │   └── ai-insights-bot-stack.ts    # CDKスタック定義

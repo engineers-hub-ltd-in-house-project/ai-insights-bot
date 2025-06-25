@@ -11,10 +11,13 @@
     "cdk": "cdk",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "lint:md": "markdownlint '**/*.md' --config .markdownlint.json",
+    "lint:md:fix": "markdownlint '**/*.md' --config .markdownlint.json --fix",
+    "lint:yaml": "echo 'YAML linting via lefthook'",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "check": "npm run lint && npm run format && npm run build",
-    "fix": "npm run lint:fix && npm run format:fix"
+    "check": "npm run lint && npm run lint:md && npm run lint:yaml && npm run format && npm run build",
+    "fix": "npm run lint:fix && npm run lint:md:fix && npm run format:fix"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
@@ -30,10 +33,12 @@
     "eslint-plugin-prettier": "^5.5.0",
     "jest": "^29.7.0",
     "lefthook": "^1.11.14",
+    "markdownlint-cli": "^0.45.0",
     "prettier": "^3.6.1",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "~5.6.3"
+    "typescript": "~5.6.3",
+    "yaml-lint": "^1.7.0"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.835.0",

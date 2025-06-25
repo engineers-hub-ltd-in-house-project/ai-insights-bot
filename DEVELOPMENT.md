@@ -84,7 +84,7 @@ LEFTHOOK_EXCLUDE=eslint,prettier git commit -m "fix: バグ修正"
 
 ### フォーマット
 
-```
+```text
 <type>(<scope>): <subject>
 ```
 
@@ -111,7 +111,7 @@ git commit -m "docs: READMEにセットアップ手順を追加"
 
 ## 🏗️ プロジェクト構造
 
-```
+```text
 ai-insights-bot/
 ├── lib/                    # CDKスタック定義
 ├── lambda/                 # Lambda関数
