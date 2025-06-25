@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.js
+*.d.ts
+cdk.out/
+
+# CDK
+*.template.json
+
+# IDE
+.vscode/
+.idea/
+
+# Test
+coverage/
+
+# Package files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Generated files
+*.generated.ts

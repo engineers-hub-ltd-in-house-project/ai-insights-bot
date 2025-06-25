@@ -1,0 +1,83 @@
+# lefthook.yml - Git hooks configuration
+
+# Skipを許可するための環境変数
+skip_output:
+  - meta
+  - summary
+
+pre-commit:
+  parallel: true
+  commands:
+    # TypeScript型チェック
+    typecheck:
+      glob: '*.{ts,tsx}'
+      run: npm run build -- --noEmit
+      tags: typescript check
+
+    # ESLint
+    eslint:
+      glob: '*.{ts,tsx}'
+      run: npx eslint {staged_files}
+      tags: lint javascript typescript
+
+    # Prettier
+    prettier:
+      glob: '*.{ts,tsx,json,md,yml,yaml}'
+      run: npx prettier --check {staged_files}
+      tags: format
+
+pre-push:
+  parallel: true
+  commands:
+    # テスト実行
+    test:
+      run: npm test -- --passWithNoTests
+      tags: test
+
+    # ビルド確認
+    build:
+      run: npm run build
+      tags: build typescript
+
+    # CDK合成確認
+    cdk-synth:
+      run: npx cdk synth --quiet
+      tags: cdk infrastructure
+
+# コミットメッセージのフォーマット確認
+commit-msg:
+  commands:
+    commitlint:
+      run: |
+        # コミットメッセージの基本的な検証
+        commit_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,72}$'
+        commit_msg=$(cat {1})
+        if ! echo "$commit_msg" | grep -qE "$commit_regex"; then
+          echo "❌ Invalid commit message format!"
+          echo ""
+          echo "Expected format: <type>(<scope>): <subject>"
+          echo ""
+          echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+          echo ""
+          echo "Example: feat(lambda): add Twitter API integration"
+          echo ""
+          exit 1
+        fi
+
+# 自動修正コマンド
+fix:
+  commands:
+    # ESLint自動修正
+    eslint-fix:
+      glob: '**/*.{ts,tsx}'
+      run: npx eslint --fix {all_files}
+
+    # Prettier自動フォーマット
+    prettier-fix:
+      glob: '**/*.{ts,tsx,json,md,yml,yaml}'
+      run: npx prettier --write {all_files}
+
+# スキップ設定
+skip:
+  - merge
+  - rebase
